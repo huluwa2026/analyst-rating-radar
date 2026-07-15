@@ -191,7 +191,7 @@ function GroupRow({ group, date, expanded, onToggle }: { group: TickerGroup; dat
         <div className="event-stack">
           {group.events.map((event) => <EventLine event={event} key={event.id} />)}
           <Link className="detail-link" href={`/?date=${date}&ticker=${encodeURIComponent(group.ticker)}`} scroll={false}>
-            Open 120-day detail <ChevronRight size={14} />
+            Open snapshot history <ChevronRight size={14} />
           </Link>
         </div>
       )}
@@ -227,7 +227,7 @@ function DetailDrawer({ detail, date, onClose }: { detail: TickerDetail; date: s
       <aside className="detail-drawer" aria-label={`${detail.ticker} analyst detail`}>
         <header className="drawer-header">
           <div><span className="ticker-mark large">{detail.ticker.slice(0, 4)}</span></div>
-          <div className="drawer-title"><p className="eyebrow">120-day rating timeline</p><h2>{detail.ticker}</h2><span>{detail.companyName}</span></div>
+          <div className="drawer-title"><p className="eyebrow">Up to 120 days of snapshots</p><h2>{detail.ticker}</h2><span>{detail.companyName}</span></div>
           <button className="icon-button" onClick={onClose} aria-label="Close detail" type="button"><X size={18} /></button>
         </header>
         <div className="drawer-price"><strong>{formatMoney(detail.currentPrice)}</strong><Change value={detail.priceReturn1d} /><span>Session {date}</span></div>
@@ -319,7 +319,7 @@ export function RadarApp({ session, sessions, detail }: { session: RadarSession;
           <div><span><CalendarDays size={13} /> Latest Session</span><strong>{formatSessionDate(session.date)}</strong></div>
           <Link className={`icon-button ${!newer ? "disabled" : ""}`} href={newer ? `/?date=${newer}` : "#"} aria-disabled={!newer} aria-label="Next trading session"><ChevronRight size={17} /></Link>
         </div>
-        <div className="source-status"><i /><span>{session.mode === "live" ? "Live Drillr data" : "Recorded fixture"}</span></div>
+        <div className="source-status"><i /><span>{session.mode === "fixture" ? "Recorded fixture" : "Published snapshot"}</span></div>
       </header>
 
       <section className="workspace-header">

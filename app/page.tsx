@@ -1,5 +1,9 @@
 import { RadarApp } from "@/components/radar-app";
-import { fetchRadarSession, fetchSessionDates, fetchTickerDetail } from "@/lib/drillr";
+import {
+  fetchPublishedManifest,
+  fetchPublishedSession,
+  fetchPublishedTickerDetail,
+} from "@/lib/snapshot-store";
 
 interface PageProps {
   searchParams: Promise<{ date?: string; ticker?: string }>;
@@ -7,7 +11,8 @@ interface PageProps {
 
 export default async function Page({ searchParams }: PageProps) {
   const params = await searchParams;
-  const sessions = await fetchSessionDates();
+  const manifest = await fetchPublishedManifest();
+  const sessions = manifest.dates;
   const requestedDate = params.date;
   const date = requestedDate && sessions.includes(requestedDate) ? requestedDate : sessions[0];
 
@@ -16,10 +21,10 @@ export default async function Page({ searchParams }: PageProps) {
   }
 
   const ticker = params.ticker?.toUpperCase();
-  const [session, detail] = await Promise.all([
-    fetchRadarSession(date),
-    ticker ? fetchTickerDetail(ticker, date) : Promise.resolve(null),
-  ]);
+  const session = await fetchPublishedSession(manifest, date);
+  const detail = ticker
+    ? await fetchPublishedTickerDetail(manifest, session, ticker)
+    : null;
 
   return <RadarApp session={session} sessions={sessions} detail={detail} />;
 }

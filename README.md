@@ -15,7 +15,7 @@ Analyst Rating Radar answers one narrow question: **what did Wall Street analyst
 - **Disagreement** — different firms sending opposing rating or target-price signals.
 - **Contradictions** — an upgrade paired with a lower target, or a downgrade paired with a higher target.
 - **All Activity** — the complete session, grouped by ticker without losing individual calls.
-- **Ticker detail** — current consensus and a 120-day analyst-rating timeline.
+- **Ticker detail** — current consensus and up to 120 days of published analyst-rating snapshots.
 
 Search covers ticker, company, firm, and analyst. Filters cover action, mapped rating direction, importance, and single- versus multi-firm activity. The latest complete U.S. trading session is selected automatically.
 
@@ -40,7 +40,7 @@ npm ci
 npm run dev:fixture
 ```
 
-Fixture mode contains synthetic versions of the validation cases and needs no credential. To use live data, copy `.env.example` to `.env.local`, set your own `DRILLR_API_KEY`, and run `npm run dev`.
+Fixture mode contains synthetic versions of the validation cases and needs no credential. Production refreshes also require a private Vercel Blob store, a server-only `DRILLR_API_KEY`, and a long random `CRON_SECRET`. Do not commit a populated environment file.
 
 ```bash
 npm run lint
@@ -55,12 +55,18 @@ RADAR_DATA_MODE=fixture npm run build
 ```text
 Browser
   → Next.js server render
-      → Drillr REST API / run_sql
-      → normalization / grouping / scoring / cache
+      → private, published Vercel Blob snapshot
   → interactive workbench
+
+Vercel Cron / authenticated operator
+  → daily call budget + circuit breaker
+  → Drillr REST API / run_sql
+  → normalization / grouping / scoring
+  → immutable session + detail blobs
+  → atomic manifest publish
 ```
 
-The server reads three Drillr tables:
+Only the protected refresh job reads three Drillr tables:
 
 | Table | Purpose |
 |---|---|
@@ -68,11 +74,19 @@ The server reads three Drillr tables:
 | `analyst_ratings_consensus` | Rating distribution and consensus target |
 | `company_snapshot` | Company name, current price, return, and market capitalization |
 
-Daily sessions and ticker histories are cached by market date. If Drillr fails, production returns a clear error; it never presents a fixture or stale response as current data.
+Public requests never call Drillr. They can only read dates and tickers already present in the private published snapshot. A refresh reserves every upstream call against a Blob-backed daily budget (12 by default), and provider failures open an operable circuit breaker. The manifest is published last, so a partial refresh cannot replace the last complete public snapshot.
+
+`vercel.json` schedules one weekday refresh. Vercel Firewall provides the production IP rate limit at the edge; it is intentionally deployment configuration rather than application code. The authenticated endpoints are:
+
+- `GET /api/cron/refresh` — refresh the latest session; an optional `date=YYYY-MM-DD` performs a bounded backfill.
+- `GET /api/admin/circuit` — inspect the circuit and current daily budget.
+- `POST /api/admin/circuit` — open or close the circuit with `{ "open": boolean, "reason": string }`.
+
+All three require `Authorization: Bearer <CRON_SECRET>`. Responses never include either credential.
 
 ## Security
 
-`DRILLR_API_KEY` is server-only. It is never placed in a `NEXT_PUBLIC_*` variable, browser request, HTML response, fixture, log, or committed environment file. Public users cannot submit SQL, and all date/ticker input is constrained before it reaches application-owned read-only queries.
+`DRILLR_API_KEY`, `BLOB_READ_WRITE_TOKEN`, and `CRON_SECRET` are server-only. They are never placed in a `NEXT_PUBLIC_*` variable, browser request, HTML response, fixture, log, or committed environment file. Snapshot data is not committed to the open-source repository, and the Blob store remains private.
 
 See [SECURITY.md](SECURITY.md) for the complete boundary and private vulnerability-reporting link.
 

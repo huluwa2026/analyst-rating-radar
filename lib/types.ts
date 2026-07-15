@@ -90,7 +90,7 @@ export interface RadarSession {
   groups: TickerGroup[];
   stats: SessionStats;
   generatedAt: string;
-  mode: "live" | "fixture";
+  mode: "snapshot" | "fixture" | "live";
 }
 
 export interface TickerDetail {

@@ -204,7 +204,11 @@ function groupEvents(events: RatingEvent[]): TickerGroup[] {
   });
 }
 
-export function buildRadarSession(date: string, rows: RawRow[], mode: "live" | "fixture" = "live"): RadarSession {
+export function buildRadarSession(
+  date: string,
+  rows: RawRow[],
+  mode: RadarSession["mode"] = "live",
+): RadarSession {
   const events = rows.map(rowToEvent);
   const groups = groupEvents(events).sort((a, b) => b.score - a.score || a.ticker.localeCompare(b.ticker));
   return {

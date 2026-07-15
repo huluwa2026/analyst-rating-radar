@@ -1,16 +1,22 @@
 import "server-only";
 
-import { unstable_cache } from "next/cache";
-import { buildRadarSession, rowToEvent } from "@/lib/aggregate";
-import { isIsoDate, isSafeTicker, subtractDays } from "@/lib/date";
-import { FIXTURE_DATE, FIXTURE_SESSIONS, fixtureHistoryRows, fixtureRows } from "@/lib/fixture";
-import type { RadarSession, RawRow, TickerDetail } from "@/lib/types";
+import { buildRadarSession } from "@/lib/aggregate";
+import type { RadarSession, RawRow } from "@/lib/types";
 
 const DEFAULT_BASE_URL = "https://gateway.drillr.ai";
 
 interface RunSqlResponse {
   data?: { columns?: string[]; rows?: unknown[][]; rowCount?: number };
   error?: { message?: string; code?: string } | string;
+}
+
+export interface DrillrCallGate {
+  beforeCall(label: string): Promise<void>;
+}
+
+export interface SessionCalendarEntry {
+  date: string;
+  events: number;
 }
 
 export class DrillrConfigurationError extends Error {
@@ -27,17 +33,15 @@ export class DrillrRequestError extends Error {
   }
 }
 
-export function isFixtureMode(): boolean {
-  return process.env.RADAR_DATA_MODE === "fixture";
-}
-
 export function tabularRowsToObjects(columns: string[], rows: unknown[][]): RawRow[] {
   return rows.map((values) => Object.fromEntries(columns.map((column, index) => [column, values[index] ?? null])));
 }
 
-async function runSql(sql: string): Promise<RawRow[]> {
+async function runSql(sql: string, gate: DrillrCallGate, label: string): Promise<RawRow[]> {
   const apiKey = process.env.DRILLR_API_KEY;
   if (!apiKey) throw new DrillrConfigurationError();
+  await gate.beforeCall(label);
+
   const baseUrl = (process.env.DRILLR_API_BASE_URL || DEFAULT_BASE_URL).replace(/\/$/, "");
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 20_000);
@@ -80,13 +84,23 @@ async function runSql(sql: string): Promise<RawRow[]> {
   }
 }
 
-async function runSqlPaged(baseSql: string, maximumRows = 1000): Promise<RawRow[]> {
+async function runSqlPaged(
+  baseSql: string,
+  expectedRows: number,
+  gate: DrillrCallGate,
+): Promise<RawRow[]> {
   const pageSize = 100;
   const rows: RawRow[] = [];
-  for (let offset = 0; offset < maximumRows; offset += pageSize) {
-    const page = await runSql(`${baseSql} LIMIT ${pageSize} OFFSET ${offset}`);
+  for (let offset = 0; offset < expectedRows; offset += pageSize) {
+    const page = await runSql(
+      `${baseSql} LIMIT ${pageSize} OFFSET ${offset}`,
+      gate,
+      `session-page:${offset / pageSize + 1}`,
+    );
     rows.push(...page);
-    if (page.length < pageSize) break;
+  }
+  if (rows.length !== expectedRows) {
+    throw new DrillrRequestError("The session changed while its snapshot was being generated.");
   }
   return rows;
 }
@@ -107,77 +121,27 @@ function consensusJoin(date: string): string {
   ) a ON a.ticker = r.ticker`;
 }
 
-async function fetchSessionDatesLive(): Promise<string[]> {
+export async function fetchSessionCalendarFromDrillr(gate: DrillrCallGate): Promise<SessionCalendarEntry[]> {
   const rows = await runSql(
     "SELECT date, COUNT(*) AS event_count FROM analyst_ratings WHERE date >= '2026-01-01' GROUP BY date ORDER BY date DESC LIMIT 24",
+    gate,
+    "session-calendar",
   );
-  return rows.map((row) => String(row.date)).filter(isIsoDate);
+  return rows
+    .map((row) => ({ date: String(row.date), events: Number.parseInt(String(row.event_count), 10) }))
+    .filter((entry) => /^\d{4}-\d{2}-\d{2}$/.test(entry.date) && Number.isFinite(entry.events) && entry.events > 0);
 }
 
-export async function fetchSessionDates(): Promise<string[]> {
-  if (isFixtureMode()) return FIXTURE_SESSIONS;
-  return unstable_cache(fetchSessionDatesLive, ["rating-session-dates-v1"], { revalidate: 900 })();
-}
-
-async function fetchSessionLive(date: string): Promise<RadarSession> {
+export async function fetchRadarSessionFromDrillr(
+  date: string,
+  expectedEvents: number,
+  gate: DrillrCallGate,
+): Promise<RadarSession> {
   const sql = `SELECT ${joinedColumns}
     FROM analyst_ratings r
     LEFT JOIN company_snapshot c ON c.ticker = r.ticker
     ${consensusJoin(date)}
     WHERE r.date = '${date}'
     ORDER BY r.importance DESC, r.updated_at DESC, r.ticker, r.id`;
-  return buildRadarSession(date, await runSqlPaged(sql), "live");
-}
-
-export async function fetchRadarSession(date: string): Promise<RadarSession> {
-  if (!isIsoDate(date)) throw new DrillrRequestError("Invalid session date.", 400);
-  if (isFixtureMode()) return buildRadarSession(FIXTURE_DATE, fixtureRows, "fixture");
-  return unstable_cache(() => fetchSessionLive(date), ["rating-session-v3", date], { revalidate: 3600 })();
-}
-
-async function fetchTickerDetailLive(ticker: string, date: string): Promise<TickerDetail | null> {
-  const fromDate = subtractDays(date, 120);
-  const sql = `SELECT ${joinedColumns}
-    FROM analyst_ratings r
-    LEFT JOIN company_snapshot c ON c.ticker = r.ticker
-    ${consensusJoin(date)}
-    WHERE r.ticker = '${ticker}' AND r.date BETWEEN '${fromDate}' AND '${date}'
-    ORDER BY r.date DESC, r.updated_at DESC
-    LIMIT 100`;
-  const events = (await runSql(sql)).map(rowToEvent);
-  if (!events.length) return null;
-  const first = events[0];
-  return {
-    ticker,
-    companyName: first.companyName,
-    currentPrice: first.currentPrice,
-    priceReturn1d: first.priceReturn1d,
-    marketCap: first.marketCap,
-    consensus: first.consensus,
-    events,
-    targetAnomaly: events.some((event) => event.targetAnomaly),
-  };
-}
-
-export async function fetchTickerDetail(tickerInput: string, date: string): Promise<TickerDetail | null> {
-  const ticker = tickerInput.toUpperCase();
-  if (!isSafeTicker(ticker) || !isIsoDate(date)) return null;
-  if (isFixtureMode()) {
-    const events = fixtureHistoryRows.filter((row) => row.ticker === ticker).map(rowToEvent);
-    if (!events.length) return null;
-    const first = events[0];
-    return {
-      ticker,
-      companyName: first.companyName,
-      currentPrice: first.currentPrice,
-      priceReturn1d: first.priceReturn1d,
-      marketCap: first.marketCap,
-      consensus: first.consensus,
-      events,
-      targetAnomaly: events.some((event) => event.targetAnomaly),
-    };
-  }
-  return unstable_cache(() => fetchTickerDetailLive(ticker, date), ["rating-ticker-v1", ticker, date], {
-    revalidate: 3600,
-  })();
+  return buildRadarSession(date, await runSqlPaged(sql, expectedEvents, gate), "live");
 }

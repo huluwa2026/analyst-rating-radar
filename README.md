@@ -1,46 +1,56 @@
-# Analyst Rating Radar
+# Analyst Rating Radar — Wall Street Analyst Ratings Dashboard
 
-An open-source financial workbench for exploring the latest Wall Street analyst rating changes, multi-firm agreement, and market disagreement.
+Analyst Rating Radar is an open-source stock research dashboard for tracking Wall Street analyst upgrades, downgrades, rating changes, price-target moves, consensus, and multi-firm signals across U.S. equities.
 
-**[Open the live radar](https://analyst-rating-radar.vercel.app)**
+**[Open the live analyst ratings dashboard](https://analyst-rating-radar.vercel.app)** · [Architecture](docs/architecture.md) · [Security](SECURITY.md)
 
-![Analyst Rating Radar showing a complete U.S. market session](docs/analyst-rating-radar.png)
+[![CI](https://github.com/huluwa2026/analyst-rating-radar/actions/workflows/ci.yml/badge.svg)](https://github.com/huluwa2026/analyst-rating-radar/actions/workflows/ci.yml)
+[![Next.js](https://img.shields.io/badge/Next.js-16-101b17?logo=next.js&logoColor=white)](https://nextjs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5-3178c6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-16734a.svg)](LICENSE)
 
-Analyst Rating Radar answers one narrow question: **what did Wall Street analysts change?** It does not predict returns, explain price moves, or provide investment advice. Original firm labels and contradictory signals remain visible rather than being compressed into a black-box conviction score.
+![Wall Street analyst ratings dashboard showing stock upgrades, downgrades, price-target changes, and multi-firm signals](docs/analyst-rating-radar.png)
 
-## What it surfaces
+## Why Analyst Rating Radar?
 
-- **Key Moves** — upgrades, downgrades, and coverage initiations.
-- **Multi-firm Agreement** — independent firms changing ratings in the same direction.
-- **Disagreement** — different firms sending opposing rating or target-price signals.
+Analyst Rating Radar answers one focused question: **what did Wall Street analysts change?** It turns a daily stream of individual analyst ratings into a transparent, searchable view without hiding original firm calls behind a black-box prediction.
+
+Use it to review:
+
+- stock upgrades, downgrades, initiations, reiterations, and maintained ratings;
+- analyst price-target raises, cuts, and rating/target contradictions;
+- multi-firm agreement and disagreement on the same company;
+- current analyst consensus and up to 120 days of published rating history;
+- the original analyst, firm, rating labels, targets, and source importance.
+
+It does not predict returns, explain price moves, or provide investment advice.
+
+## Features
+
+- **Key Moves** — upgrades, downgrades, and coverage initiations prioritized for review.
+- **Multi-firm Agreement** — independent research firms changing ratings in the same direction.
+- **Analyst Disagreement** — firms sending opposing rating or price-target signals.
 - **Contradictions** — an upgrade paired with a lower target, or a downgrade paired with a higher target.
-- **All Activity** — the complete session, grouped by ticker without losing individual calls.
-- **Ticker detail** — current consensus and up to 120 days of published analyst-rating snapshots.
+- **All Activity** — a complete market session grouped by stock ticker without losing individual calls.
+- **Ticker Detail** — company context, analyst consensus, and published historical rating events.
+- **Research Filters** — search by ticker, company, firm, or analyst; filter by action, direction, importance, and firm count.
 
-Search covers ticker, company, firm, and analyst. Filters cover action, mapped rating direction, importance, and single- versus multi-firm activity. The latest complete U.S. trading session is selected automatically.
+The newest complete U.S. trading session is selected automatically. Signal strength is a browsing priority, not a forecast, and every contributing factor remains visible in the interface.
 
-## Transparent signal strength
-
-Signal strength is a browsing priority, not a forecast. Its on-screen explanation lists every contributing factor:
-
-- rating action type;
-- the source `importance` value;
-- additional material calls from independent firms;
-- agreement, disagreement, or rating/target contradiction;
-- a small browsing weight for widely followed companies.
-
-Unverified target-price percentage changes never contribute. Large discontinuities, such as values that may cross a split or adjustment boundary, are flagged and shown only as context.
-
-## Run locally
+## Quick start
 
 Requirements: Node.js 20.9 or newer and npm.
 
 ```bash
+git clone https://github.com/huluwa2026/analyst-rating-radar.git
+cd analyst-rating-radar
 npm ci
 npm run dev:fixture
 ```
 
-Fixture mode contains synthetic versions of the validation cases and needs no credential. Production refreshes also require a private Vercel Blob store, a server-only `DRILLR_API_KEY`, and a long random `CRON_SECRET`. Do not commit a populated environment file.
+Open [http://localhost:3000](http://localhost:3000). Fixture mode uses synthetic validation cases and needs no credential.
+
+Run the complete local verification suite:
 
 ```bash
 npm run lint
@@ -50,46 +60,70 @@ npm run test:e2e
 RADAR_DATA_MODE=fixture npm run build
 ```
 
+Production refreshes additionally require a private Vercel Blob store, a server-only `DRILLR_API_KEY`, and a long random `CRON_SECRET`. Never commit a populated environment file.
+
+## Tech stack
+
+| Layer | Technology |
+|---|---|
+| Web application | Next.js 16 App Router, React 19, TypeScript |
+| Snapshot storage | Private Vercel Blob objects with atomic manifest publishing |
+| Data source | Drillr structured analyst-rating data |
+| Testing | Vitest and Playwright |
+| Deployment | Vercel Cron, Functions, and Firewall |
+
 ## Data architecture
 
 ```text
-Browser
+Public browser request
   → Next.js server render
-      → private, published Vercel Blob snapshot
-  → interactive workbench
+  → private, published Vercel Blob snapshot
+  → interactive analyst ratings dashboard
 
 Vercel Cron / authenticated operator
-  → daily call budget + circuit breaker
-  → Drillr REST API / run_sql
-  → normalization / grouping / scoring
-  → immutable session + detail blobs
+  → daily Drillr call budget + circuit breaker
+  → application-owned read-only SQL
+  → normalization / grouping / transparent scoring
+  → immutable session + ticker-detail blobs
   → atomic manifest publish
 ```
 
-Only the protected refresh job reads three Drillr tables:
+Only the protected refresh job reads the upstream analyst-rating tables:
 
 | Table | Purpose |
 |---|---|
-| `analyst_ratings` | Individual rating and target-price events |
-| `analyst_ratings_consensus` | Rating distribution and consensus target |
+| `analyst_ratings` | Individual analyst rating and price-target events |
+| `analyst_ratings_consensus` | Rating distribution and consensus price target |
 | `company_snapshot` | Company name, current price, return, and market capitalization |
 
-Public requests never call Drillr. They can only read dates and tickers already present in the private published snapshot. A refresh reserves every upstream call against a Blob-backed daily budget (12 by default), and provider failures open an operable circuit breaker. The manifest is published last, so a partial refresh cannot replace the last complete public snapshot.
+Public requests never call Drillr. They can only read dates and tickers already present in the private published snapshot. Each upstream call reserves capacity against a Blob-backed daily budget, provider failures open a circuit breaker, and the public manifest changes only after a complete refresh.
 
-`vercel.json` schedules one weekday refresh. Vercel Firewall provides the production IP rate limit at the edge; it is intentionally deployment configuration rather than application code. The authenticated endpoints are:
+Read the [architecture documentation](docs/architecture.md) for the request boundary, snapshot lifecycle, normalization rules, and anti-abuse controls.
 
-- `GET /api/cron/refresh` — refresh the latest session; an optional `date=YYYY-MM-DD` performs a bounded backfill.
-- `GET /api/admin/circuit` — inspect the circuit and current daily budget.
-- `POST /api/admin/circuit` — open or close the circuit with `{ "open": boolean, "reason": string }`.
+## Transparent signal strength
 
-All three require `Authorization: Bearer <CRON_SECRET>`. Responses never include either credential.
+The on-screen explanation lists every scoring factor:
 
-## Security
+- rating action type;
+- the source `importance` value;
+- additional material calls from independent firms;
+- agreement, disagreement, or rating/target contradiction;
+- a small browsing weight for widely followed companies.
 
-`DRILLR_API_KEY`, `BLOB_READ_WRITE_TOKEN`, and `CRON_SECRET` are server-only. They are never placed in a `NEXT_PUBLIC_*` variable, browser request, HTML response, fixture, log, or committed environment file. Snapshot data is not committed to the open-source repository, and the Blob store remains private.
+Unverified target-price percentage changes never contribute. Large discontinuities that may cross a split or adjustment boundary are flagged and shown only as context.
 
-See [SECURITY.md](SECURITY.md) for the complete boundary and private vulnerability-reporting link.
+## Security and data safety
+
+`DRILLR_API_KEY`, `BLOB_READ_WRITE_TOKEN`, and `CRON_SECRET` are server-only. They never enter browser code, HTML, React Server Component payloads, public JSON, fixtures, logs, or committed environment files. Snapshot files remain in a private Blob store and are not part of this open-source repository.
+
+Public traffic is isolated from the upstream provider, ticker details are restricted to members of the selected snapshot, refreshes have a global daily call limit and circuit breaker, and Vercel Firewall rate-limits public requests by IP.
+
+See [SECURITY.md](SECURITY.md) for the complete boundary and [GitHub private vulnerability reporting](https://github.com/huluwa2026/analyst-rating-radar/security/advisories/new) for security reports.
+
+## Contributing
+
+Bug reports, focused feature proposals, documentation improvements, and pull requests are welcome. Start with [open issues](https://github.com/huluwa2026/analyst-rating-radar/issues) or open a new issue with a reproducible example. Never attach credentials or proprietary source data.
 
 ## License
 
-MIT
+Released under the [MIT License](LICENSE).

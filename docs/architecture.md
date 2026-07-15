@@ -1,27 +1,61 @@
-# Architecture
+# Analyst Rating Radar architecture
 
-## Request flow
+Analyst Rating Radar separates public stock-research traffic from upstream analyst-rating collection. A browser request can render only an already-published private snapshot; it cannot trigger Drillr, submit SQL, enumerate arbitrary ticker history, or consume the upstream API budget.
 
-The App Router page is server-rendered. It resolves the newest complete `analyst_ratings.date`, loads the selected daily session, normalizes every event, aggregates by ticker, and sends only display-ready public market data to the client component.
+## Public request flow
 
-Ticker detail uses another server render keyed by validated `ticker` and `date` query parameters. There is no public SQL proxy and no browser-to-Drillr request.
+1. The Next.js App Router page reads a small published manifest from private Vercel Blob storage.
+2. The requested market date must exist in that manifest; otherwise the latest published session is selected.
+3. The server reads the immutable daily session snapshot and sends display-ready public market data to the client component.
+4. A ticker detail request is accepted only when the ticker belongs to the selected daily session.
+5. The server builds that detail from the published 120-day snapshot index. No public route imports the Drillr client.
 
-## Upstream queries
+The health endpoint follows the same snapshot-only boundary and reports the latest published market date, generation time, and staleness without checking or exposing upstream credentials.
 
-Drillr `run_sql` responses are paged in deterministic 100-row chunks because a complete trading session can contain several hundred events. Daily results are cached for one hour; the session calendar refreshes every 15 minutes. Ticker history is limited to the preceding 120 calendar days and 100 calls.
+## Snapshot refresh flow
 
-## Normalization
+Only Vercel Cron or an authenticated operator can call the refresh route. The route uses a timing-safe comparison against the server-only `CRON_SECRET` and then:
 
-`lib/normalize.ts` is the only rating/action normalization boundary. The 23 validated rating labels are mapped explicitly to `bullish`, `neutral`, or `bearish`; unfamiliar labels stay `unknown`. Original source strings are preserved on every event.
+1. checks the deployment kill switch and persistent circuit breaker;
+2. atomically reserves one unit from the daily global Drillr budget before every provider request;
+3. fetches the recent session calendar and the selected daily events in deterministic 100-row pages;
+4. normalizes ratings, groups events by ticker, and computes transparent browsing signals;
+5. writes immutable daily-session and ticker-detail blobs;
+6. publishes the small mutable manifest last.
 
-Agreement requires at least two independent firms upgrading or downgrading the same ticker. Disagreement also requires cross-firm opposing signals. A single firm's downgrade combined with a higher price target is a contradiction, not institutional disagreement.
+Writing the manifest last means a timeout or partial refresh cannot replace the previous complete public snapshot. Provider failures automatically open the circuit breaker, while operators can inspect, open, or close it through the authenticated control route.
 
-## Security boundary
+## Upstream data model
 
-- `lib/drillr.ts` imports `server-only` and is the only Drillr client.
-- `DRILLR_API_KEY` never enters component props or stable error text.
-- The application accepts no user SQL.
-- Date input uses an ISO validator and is constrained to the returned session calendar.
-- Ticker input uses a short uppercase allowlist before SQL interpolation.
-- Security response headers are configured globally.
-- Fixture mode must be set explicitly and is never an error fallback.
+The refresh service uses application-owned, read-only SQL against three structured tables:
+
+| Table | Purpose |
+|---|---|
+| `analyst_ratings` | Individual Wall Street analyst rating and price-target events |
+| `analyst_ratings_consensus` | Rating distribution, analyst count, and consensus price target |
+| `company_snapshot` | Company name, current price, return, and market capitalization |
+
+Users cannot submit SQL or alter query predicates. The session count is fetched first so pagination has a deterministic upper bound and a session that changes mid-refresh is rejected rather than partially published.
+
+## Rating normalization and signal rules
+
+`lib/normalize.ts` is the only rating/action normalization boundary. The validated rating vocabulary maps explicitly to `bullish`, `neutral`, or `bearish`; unfamiliar labels stay `unknown`. Original source strings remain attached to every event.
+
+Agreement requires at least two independent firms upgrading or downgrading the same ticker. Disagreement requires cross-firm opposing signals. A single firm's downgrade combined with a higher price target is a contradiction, not institutional disagreement.
+
+Signal strength prioritizes browsing. It is not a return forecast and never uses an unverified target-price percentage change. Large historical target discontinuities are flagged and excluded from scoring.
+
+## Anti-abuse and security controls
+
+- Public pages, ticker detail, and health checks read snapshots only.
+- The public source tree has a regression test that rejects Drillr imports across the snapshot boundary.
+- `DRILLR_API_KEY`, `BLOB_READ_WRITE_TOKEN`, and `CRON_SECRET` are server-only deployment secrets.
+- Every provider request consumes one unit from a fail-closed, Blob-backed daily global budget.
+- A deployment environment kill switch and an operable persistent circuit breaker can stop all upstream requests.
+- Ticker detail is restricted to tickers already visible in the selected published session.
+- Vercel Firewall applies an IP-based rate limit to the public dashboard.
+- Private immutable blobs hold snapshots; no live snapshot or proprietary credential is committed to GitHub.
+- Security response headers, including CSP and frame protection, are configured globally.
+- Fixture mode is explicit and synthetic; production never falls back to fixtures.
+
+See the repository [security policy](../SECURITY.md) for reporting and credential-handling requirements.

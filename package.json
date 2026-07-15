@@ -2,7 +2,27 @@
   "name": "analyst-rating-radar",
   "version": "0.1.0",
   "private": true,
-  "description": "An open-source workbench for exploring Wall Street analyst rating changes.",
+  "description": "Open-source Wall Street analyst ratings dashboard for stock upgrades, downgrades, price targets, consensus, and multi-firm signals.",
+  "homepage": "https://analyst-rating-radar.vercel.app",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/huluwa2026/analyst-rating-radar.git"
+  },
+  "bugs": {
+    "url": "https://github.com/huluwa2026/analyst-rating-radar/issues"
+  },
+  "license": "MIT",
+  "keywords": [
+    "analyst-ratings",
+    "stock-market",
+    "stock-analysis",
+    "financial-data",
+    "investment-research",
+    "price-targets",
+    "data-visualization",
+    "nextjs",
+    "typescript"
+  ],
   "scripts": {
     "dev": "next dev",
     "dev:fixture": "RADAR_DATA_MODE=fixture next dev",

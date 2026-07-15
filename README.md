@@ -2,6 +2,8 @@
 
 Analyst Rating Radar is an open-source stock research dashboard for tracking Wall Street analyst upgrades, downgrades, rating changes, price-target moves, consensus, and multi-firm signals across U.S. equities.
 
+[English](README.md) | [简体中文](README.zh-CN.md)
+
 **[Open the live analyst ratings dashboard](https://analyst-rating-radar.vercel.app)** · [Architecture](docs/architecture.md) · [Security](SECURITY.md)
 
 [![CI](https://github.com/huluwa2026/analyst-rating-radar/actions/workflows/ci.yml/badge.svg)](https://github.com/huluwa2026/analyst-rating-radar/actions/workflows/ci.yml)

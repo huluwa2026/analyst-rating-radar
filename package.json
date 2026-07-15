@@ -1,0 +1,41 @@
+{
+  "name": "analyst-rating-radar",
+  "version": "0.1.0",
+  "private": true,
+  "description": "An open-source workbench for exploring Wall Street analyst rating changes.",
+  "scripts": {
+    "dev": "next dev",
+    "dev:fixture": "RADAR_DATA_MODE=fixture next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test"
+  },
+  "dependencies": {
+    "lucide-react": "1.24.0",
+    "next": "16.2.10",
+    "react": "19.2.7",
+    "react-dom": "19.2.7"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.61.1",
+    "@types/node": "24.10.13",
+    "@types/react": "19.2.14",
+    "@types/react-dom": "19.2.3",
+    "eslint": "9.39.3",
+    "eslint-config-next": "16.2.10",
+    "typescript": "5.9.3",
+    "vitest": "4.1.10"
+  },
+  "engines": {
+    "node": "24.x"
+  },
+  "overrides": {
+    "next": {
+      "postcss": "^8.5.10"
+    }
+  }
+}

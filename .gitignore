@@ -5,6 +5,7 @@ dev/
 .DS_Store
 node_modules/
 .next/
+out/
 dist/
 coverage/
 playwright-report/
@@ -12,4 +13,3 @@ test-results/
 *.tsbuildinfo
 npm-debug.log*
 .vercel/
-

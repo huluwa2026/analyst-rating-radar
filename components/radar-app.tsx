@@ -250,7 +250,7 @@ function DetailDrawer({ detail, date, onClose }: { detail: TickerDetail; date: s
             ))}
           </div>
         </section>
-        <footer className="drawer-footer">Source: Drillr structured analyst-rating data. No investment advice.</footer>
+        <footer className="drawer-footer">Source: <a href="https://drillr.ai/l/analyst-radar-app" target="_blank" rel="noreferrer">Drillr structured analyst-rating data</a>. No investment advice.</footer>
       </aside>
     </div>
   );

@@ -70,7 +70,7 @@ RADAR_DATA_MODE=fixture npm run build
 |---|---|
 | Web 应用 | Next.js 16 App Router、React 19、TypeScript |
 | 快照存储 | 私有 Vercel Blob、不可变对象与原子清单发布 |
-| 数据源 | Drillr 结构化分析师评级数据 |
+| 数据源 | [Drillr 结构化分析师评级数据](https://drillr.ai/l/analyst-radar-gh) |
 | 测试 | Vitest、Playwright |
 | 部署 | Vercel Cron、Functions、Firewall |
 

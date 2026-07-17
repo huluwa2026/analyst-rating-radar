@@ -210,6 +210,7 @@ button { color: inherit; }
 .timeline-card dt { color: var(--faint); font-size: 8px; text-transform: uppercase; }
 .timeline-card dd { margin: 5px 0 0; min-width: 0; }
 .drawer-footer { padding: 14px 19px 25px; color: var(--faint); font-size: 9px; }
+.drawer-footer a { color: var(--green); font-weight: 700; text-underline-offset: 2px; }
 .empty-copy { color: var(--muted); font-size: 10px; }
 
 .state-page { min-height: 100vh; max-width: 620px; margin: 0 auto; padding: 20vh 24px 60px; display: flex; flex-direction: column; align-items: flex-start; }

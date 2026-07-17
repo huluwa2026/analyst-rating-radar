@@ -72,7 +72,7 @@ Create a [Drillr API key](https://drillr.ai/l/analyst-radar-gh) for live refresh
 |---|---|
 | Web application | Next.js 16 App Router, React 19, TypeScript |
 | Snapshot storage | Private Vercel Blob objects with atomic manifest publishing |
-| Data source | Drillr structured analyst-rating data |
+| Data source | [Drillr structured analyst-rating data](https://drillr.ai/l/analyst-radar-gh) |
 | Testing | Vitest and Playwright |
 | Deployment | Vercel Cron, Functions, and Firewall |
 

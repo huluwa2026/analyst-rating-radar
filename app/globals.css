@@ -153,6 +153,7 @@ button { color: inherit; }
 .empty-state strong { color: var(--ink); font-size: 13px; }
 .empty-state span { font-size: 11px; }
 .app-footer { max-width: 1800px; margin: 0 auto; padding: 16px clamp(20px, 3vw, 48px) 28px; display: flex; justify-content: space-between; color: var(--faint); font-size: 9px; }
+.app-footer a { color: var(--green); font-weight: 700; text-underline-offset: 2px; }
 
 .drawer-layer { position: fixed; inset: 0; z-index: 60; display: flex; justify-content: flex-end; }
 .drawer-backdrop { position: absolute; inset: 0; border: 0; background: rgba(10,18,14,.48); cursor: default; }

@@ -51,6 +51,7 @@ async function runSql(sql: string, gate: DrillrCallGate, label: string): Promise
       method: "POST",
       headers: {
         Authorization: `Bearer ${apiKey}`,
+        "X-Drillr-Via": "analyst-rating-radar",
         "Content-Type": "application/json",
         Accept: "application/json",
       },

@@ -4,7 +4,7 @@ Analyst Rating Radar is an open-source stock research dashboard for tracking Wal
 
 [English](README.md) | [简体中文](README.zh-CN.md)
 
-**[Open the live analyst ratings dashboard](https://analyst-rating-radar.vercel.app)** · [Architecture](docs/architecture.md) · [Security](SECURITY.md)
+**[Open the live analyst ratings dashboard](https://analyst-rating-radar.vercel.app)** · [Architecture](docs/architecture.md) · [Security](SECURITY.md) · [Build with Drillr](https://drillr.ai/l/analyst-radar-gh)
 
 [![CI](https://github.com/huluwa2026/analyst-rating-radar/actions/workflows/ci.yml/badge.svg)](https://github.com/huluwa2026/analyst-rating-radar/actions/workflows/ci.yml)
 [![Next.js](https://img.shields.io/badge/Next.js-16-101b17?logo=next.js&logoColor=white)](https://nextjs.org/)
@@ -64,6 +64,8 @@ RADAR_DATA_MODE=fixture npm run build
 
 Production refreshes additionally require a private Vercel Blob store, a server-only `DRILLR_API_KEY`, and a long random `CRON_SECRET`. Never commit a populated environment file.
 
+Create a [Drillr API key](https://drillr.ai/l/analyst-radar-gh) for live refreshes. Drillr requests include the stable project header `X-Drillr-Via: analyst-rating-radar`; it identifies aggregate project usage without adding tracking parameters to public URLs.
+
 ## Tech stack
 
 | Layer | Technology |
@@ -121,6 +123,10 @@ Unverified target-price percentage changes never contribute. Large discontinuiti
 Public traffic is isolated from the upstream provider, ticker details are restricted to members of the selected snapshot, refreshes have a global daily call limit and circuit breaker, and Vercel Firewall rate-limits public requests by IP.
 
 See [SECURITY.md](SECURITY.md) for the complete boundary and [GitHub private vulnerability reporting](https://github.com/huluwa2026/analyst-rating-radar/security/advisories/new) for security reports.
+
+## Privacy
+
+The hosted site uses Vercel Web Analytics for anonymous aggregate page views and referrers. It does not add analytics cookies or custom interaction events. Query strings and fragments are removed before events are sent, so dates, searches, and selected tickers are not included. Outbound Drillr calls use readable branded short links and land on a clean URL without visible UTM parameters.
 
 ## Contributing
 

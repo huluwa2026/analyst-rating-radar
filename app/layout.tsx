@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { PrivacyAnalytics } from "@/components/privacy-analytics";
 import "@/app/globals.css";
 
 export const metadata: Metadata = {
@@ -20,7 +21,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>{children}<PrivacyAnalytics /></body>
     </html>
   );
 }

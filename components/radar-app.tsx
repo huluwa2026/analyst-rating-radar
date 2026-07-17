@@ -357,7 +357,7 @@ export function RadarApp({ session, sessions, detail }: { session: RadarSession;
         </div>
       </section>
 
-      <footer className="app-footer"><span>Data source: Drillr · Session keyed to the U.S. market date</span><span>Transparent rules · No investment advice · No generated facts</span></footer>
+      <footer className="app-footer"><span>Data source: Drillr · Session keyed to the U.S. market date · <a href="https://drillr.ai/l/analyst-radar-app" target="_blank" rel="noreferrer">Build with Drillr</a></span><span>Transparent rules · No investment advice · No generated facts</span></footer>
       {detail && <DetailDrawer detail={detail} date={session.date} onClose={closeDetail} />}
     </main>
   );

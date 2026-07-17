@@ -15,4 +15,9 @@ describe("public request boundary", () => {
     expect(publicSources).not.toMatch(/@\/lib\/drillr|DRILLR_API_KEY|runSql|refreshPublishedSnapshot/);
     expect(publicSources).toContain("fetchPublishedManifest");
   });
+
+  it("uses a stable project header for server-side Drillr requests", () => {
+    const drillrSource = readFileSync(join(process.cwd(), "lib/drillr.ts"), "utf8");
+    expect(drillrSource).toContain('"X-Drillr-Via": "analyst-rating-radar"');
+  });
 });
